@@ -1,0 +1,8 @@
+# Zackboing hinter Caddy – in die /etc/caddy/Caddyfile einfügen, Domain anpassen.
+# Caddy holt das TLS-Zertifikat automatisch und reicht WebSockets durch.
+zackboing.gsndk.de {
+    request_body {
+        max_size 30MB
+    }
+    reverse_proxy 127.0.0.1:3100
+}

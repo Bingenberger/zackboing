@@ -1,0 +1,22 @@
+{
+  "name": "zackboing",
+  "version": "1.0.0",
+  "description": "Live-Quizspiel für die Schule – Lehrkräfte erstellen Quizze, Schüler treten live gegeneinander an.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node test/e2e.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zackboing – Adminbereich</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+</head>
+<body>
+
+  <section id="screen-admin" class="screen active">
+    <div class="topbar">
+      <div class="brand"><a href="/teacher.html">Zackboing</a> <span style="font-weight:600; opacity:.7;">· Adminbereich</span></div>
+      <div class="user-info">
+        <a class="btn ghost small" href="/teacher.html">← Zum Dashboard</a>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="error-msg" id="admin-error"></div>
+
+      <h2>⚙️ Allgemeine Einstellungen</h2>
+      <div class="editor-card" style="margin-top:12px;">
+        <div class="settings-row">
+          <label class="inline">
+            <input type="checkbox" id="set-registration">
+            Selbstregistrierung für Lehrkräfte erlauben
+          </label>
+        </div>
+        <div class="settings-row">
+          <label class="inline" for="set-gallery" style="min-width:120px;">Bildarchiv-URL</label>
+          <input type="text" id="set-gallery" placeholder="https://pix.foerster.rocks">
+        </div>
+        <div class="settings-row" style="align-items:flex-start;">
+          <label class="inline" for="set-subjects" style="min-width:120px; padding-top:12px;">Fächerliste</label>
+          <textarea id="set-subjects" rows="3" style="flex:1; min-width:260px; margin:0;" placeholder="Deutsch, Mathematik, Englisch, …"></textarea>
+        </div>
+        <p class="muted-note" style="margin-bottom:12px;">Fächer mit Komma trennen. Quizze lassen sich einem Fach zuordnen; die Bibliothek gruppiert danach.</p>
+        <button class="btn green small" id="btn-save-settings">Einstellungen speichern</button>
+        <span class="muted-note" id="settings-saved" style="margin-left:10px; display:none;">✔ Gespeichert</span>
+      </div>
+
+      <h2 style="margin-top:30px;">👥 Lehrerkonten</h2>
+      <div class="editor-card" style="margin-top:12px;">
+        <label>Neues Konto anlegen</label>
+        <div class="q-settings">
+          <div><input type="text" id="new-name" placeholder="Name"></div>
+          <div><input type="email" id="new-email" placeholder="E-Mail"></div>
+          <div><input type="text" id="new-password" placeholder="Startpasswort (mind. 8 Zeichen)"></div>
+          <div>
+            <select id="new-role">
+              <option value="teacher">Lehrkraft</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn pink small" id="btn-create-user">+ Konto anlegen</button>
+      </div>
+
+      <div style="overflow-x:auto; margin-top:14px; margin-bottom:40px;">
+        <table class="admin-table" id="user-table">
+          <thead>
+            <tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Quizze</th><th>Seit</th><th>Aktionen</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

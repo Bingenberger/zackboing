@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zackboing – Spiel läuft</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+</head>
+<body>
+
+  <!-- Start-Gate: erster Klick schaltet Audio frei -->
+  <section id="screen-gate" class="screen center active">
+    <h1 class="logo">Zackboing</h1>
+    <p class="tagline" id="gate-info">Spiel wird vorbereitet …</p>
+    <button class="btn pink big" id="btn-open-lobby" style="max-width:340px; margin-top:26px;" disabled>Lobby öffnen 🔊</button>
+    <p style="opacity:.6; margin-top:14px;">Tipp: Dieses Fenster auf den Beamer spiegeln!</p>
+  </section>
+
+  <!-- Lobby -->
+  <section id="screen-lobby" class="screen">
+    <div class="host-top">
+      <div class="qr-box">
+        <img id="qr-img" alt="QR-Code zum Beitreten">
+        <div class="url" id="join-url"></div>
+      </div>
+      <div class="pin-banner">
+        <div class="label">Spiel-PIN</div>
+        <div class="pin" id="pin-display">······</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
+        <div class="player-count-badge"><span id="player-count">0</span> 👥</div>
+        <button class="btn green" id="btn-start" style="font-size:1.3rem;">Spiel starten ▶</button>
+      </div>
+    </div>
+    <h2 style="text-align:center; margin-top:6px;" id="lobby-quiz-title"></h2>
+    <div class="lobby-mental" id="lobby-mental" style="display:none;">
+      <span>🧮 Aufgaben:</span>
+      <input type="range" id="lobby-count" min="3" max="50" step="1" value="10" aria-label="Anzahl Aufgaben">
+      <span class="count-value" id="lobby-count-value">10</span>
+      <span class="info" id="lobby-mental-info"></span>
+    </div>
+    <div class="lobby-players" id="lobby-players"></div>
+    <p class="waiting-hint">Geht auf <b id="join-url-inline"></b> oder scannt den QR-Code · Klick auf einen Namen entfernt den Spieler</p>
+  </section>
+
+  <!-- Vorbereitung -->
+  <section id="screen-prepare" class="screen">
+    <div class="q-header"><div class="q-counter" id="prep-counter"></div><div class="type-badge" id="prep-type"></div><div class="q-counter" id="prep-points"></div></div>
+    <div class="prepare-wrap">
+      <div class="q-text" style="margin:0; width:min(900px,92vw);" id="prep-text"></div>
+      <div class="prepare-count" id="prep-count">3</div>
+    </div>
+  </section>
+
+  <!-- Frage -->
+  <section id="screen-question" class="screen">
+    <div class="q-header">
+      <div class="q-counter" id="q-counter"></div>
+      <div class="type-badge" id="q-type"></div>
+      <button class="btn ghost small" id="btn-skip">Frage beenden ⏭</button>
+    </div>
+    <div class="q-text" id="q-text"></div>
+    <div class="q-media" id="q-media"></div>
+    <div class="q-middle">
+      <div class="timer-circle" id="timer-circle">20</div>
+      <div class="answer-count">
+        <div class="num" id="answered-num">0</div>
+        <div class="lbl">Antworten</div>
+      </div>
+    </div>
+    <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+    <div id="host-stage" style="padding-bottom:20px;"></div>
+  </section>
+
+  <!-- Ergebnisse -->
+  <section id="screen-results" class="screen">
+    <div class="q-header">
+      <div class="q-counter" id="r-counter"></div>
+      <div class="type-badge" id="r-type"></div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn ghost small" id="btn-hold" style="display:none;">⏸ Anhalten</button>
+        <button class="btn green" id="btn-next">Weiter ▶</button>
+      </div>
+    </div>
+    <div id="result-stage" style="display:flex; flex-direction:column;"></div>
+    <div class="leaderboard" id="leaderboard"></div>
+  </section>
+
+  <!-- Podium -->
+  <section id="screen-podium" class="screen">
+    <h1 class="logo" style="text-align:center; font-size:clamp(1.8rem,5vw,3rem); margin-top:18px;" id="podium-title"></h1>
+    <div class="podium-wrap" id="podium"></div>
+    <div class="leaderboard final-list" id="final-list"></div>
+    <div class="host-footer" style="justify-content:center;">
+      <button class="btn ghost" onclick="location.href='/teacher.html'">Zurück zum Dashboard</button>
+    </div>
+  </section>
+
+  <!-- Fehler -->
+  <!-- Hinweis bei kurzem Verbindungsabbruch (überlagert den aktuellen Bildschirm) -->
+  <div id="offline-banner" style="display:none;">📶 Verbindung unterbrochen – wird automatisch wiederhergestellt …</div>
+
+  <section id="screen-error" class="screen center">
+    <div class="big-emoji" style="animation:none;">🙈</div>
+    <h2 id="error-text" style="margin-top:14px;">Etwas ist schiefgelaufen.</h2>
+    <button class="btn ghost" style="margin-top:22px;" onclick="location.href='/teacher.html'">Zum Dashboard</button>
+  </section>
+
+  <canvas id="confetti"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/sounds.js"></script>
+  <script src="/js/confetti.js"></script>
+  <script src="/js/host.js"></script>
+</body>
+</html>

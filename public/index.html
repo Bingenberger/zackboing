@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Zackboing – Mitspielen</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+</head>
+<body>
+
+  <!-- Beitritt -->
+  <section id="screen-join" class="screen center active">
+    <h1 class="logo">Zackboing</h1>
+    <p class="tagline">Das Live-Quiz für eure Klasse 🚀</p>
+    <div class="card">
+      <div class="error-msg" id="join-error"></div>
+      <input type="text" id="pin" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Spiel-PIN" autocomplete="off">
+      <input type="text" id="nickname" maxlength="20" placeholder="Dein Spitzname" autocomplete="off">
+      <button class="btn pink big" id="btn-join">Los geht's!</button>
+      <p class="link-row">Du bist eine Lehrkraft? <a href="/teacher.html">Zum Lehrerbereich</a></p>
+    </div>
+  </section>
+
+  <!-- Lobby: warten auf Spielstart -->
+  <section id="screen-lobby" class="screen center">
+    <button class="big-emoji avatar-btn" id="lobby-avatar" type="button" aria-label="Anderen Avatar würfeln">🦊</button>
+    <h2 id="lobby-name" style="font-size:2rem; margin-top:10px;"></h2>
+    <p style="opacity:.85; margin-top:14px; font-size:1.15rem;">Du bist drin! Siehst du deinen Namen auf dem großen Bildschirm?</p>
+    <p style="opacity:.75; margin-top:8px;">👆 Tipp auf dein Tier, um ein anderes zu würfeln.</p>
+    <p style="opacity:.6; margin-top:26px;" class="pulse-dot">Warten auf den Start …</p>
+  </section>
+
+  <!-- Vorbereitung auf die Frage -->
+  <section id="screen-prepare" class="screen center">
+    <div class="q-counter" id="prep-counter"></div>
+    <h2 id="prep-text" style="font-size:clamp(1.4rem,5vw,2rem); margin:22px 12px; max-width:640px;"></h2>
+    <div class="prepare-count" id="prep-count">3</div>
+    <p style="opacity:.8;">Finger bereit! 👆</p>
+  </section>
+
+  <!-- Frage: typabhängige Eingabefläche -->
+  <section id="screen-question" class="screen">
+    <div class="player-header">
+      <div class="who"><span id="q-avatar">🦊</span><span class="nm" id="q-name"></span></div>
+      <div class="pts" id="q-score">0</div>
+    </div>
+    <div id="play-area" style="flex:1; display:flex; flex-direction:column;"></div>
+  </section>
+
+  <!-- Antwort abgegeben, warten -->
+  <section id="screen-waiting" class="screen center">
+    <div class="big-emoji">⏳</div>
+    <h2 id="waiting-title" style="margin-top:16px;">Antwort ist raus!</h2>
+    <p id="waiting-hint" style="opacity:.8; margin-top:10px;">Warst du schnell genug? Gleich siehst du es …</p>
+  </section>
+
+  <!-- Kurzer Verbindungsabbruch: automatischer Wiedereinstieg läuft -->
+  <section id="screen-offline" class="screen center">
+    <div class="big-emoji">📶</div>
+    <h2 style="margin-top:16px;">Kurz kein Empfang …</h2>
+    <p style="opacity:.8; margin-top:10px;">Bleib hier – du kommst automatisch zurück ins Spiel!</p>
+  </section>
+
+  <!-- Ergebnis der Frage -->
+  <section id="screen-result" class="screen">
+    <div class="result-full" id="result-box">
+      <div class="big-emoji" id="result-emoji" style="animation:none;">🎉</div>
+      <h2 id="result-title"></h2>
+      <div class="points-gained" id="result-points"></div>
+      <div class="streak-banner" id="result-streak" style="display:none;"></div>
+      <div class="rank-info" id="result-rank"></div>
+    </div>
+  </section>
+
+  <!-- Endstand für diesen Spieler -->
+  <section id="screen-final" class="screen center">
+    <div class="big-emoji" id="final-emoji">🏆</div>
+    <h2 id="final-title" style="font-size:2.2rem; margin-top:10px;"></h2>
+    <div class="card" style="text-align:center;">
+      <h2 id="final-score"></h2>
+      <p id="final-stats" style="color:var(--muted); margin-top:8px;"></p>
+    </div>
+    <button class="btn ghost" style="margin-top:22px;" onclick="location.href='/'">Neues Spiel</button>
+  </section>
+
+  <!-- Abbruch / Rauswurf -->
+  <section id="screen-gone" class="screen center">
+    <div class="big-emoji" style="animation:none;">😢</div>
+    <h2 id="gone-title" style="margin-top:14px;">Das Spiel wurde beendet.</h2>
+    <button class="btn ghost" style="margin-top:22px;" onclick="location.href='/'">Zurück zum Start</button>
+  </section>
+
+  <canvas id="confetti"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/sounds.js"></script>
+  <script src="/js/confetti.js"></script>
+  <script src="/js/play.js"></script>
+</body>
+</html>

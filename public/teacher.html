@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zackboing – Lehrerbereich</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧑‍🏫</text></svg>">
+</head>
+<body>
+
+  <!-- Login / Registrierung -->
+  <section id="screen-auth" class="screen center">
+    <h1 class="logo">Zackboing</h1>
+    <p class="tagline">Lehrerbereich 🧑‍🏫</p>
+    <div class="card">
+      <div class="error-msg" id="auth-error"></div>
+
+      <div id="login-form">
+        <h2>Anmelden</h2>
+        <input type="email" id="login-email" placeholder="E-Mail-Adresse" autocomplete="email">
+        <input type="password" id="login-password" placeholder="Passwort" autocomplete="current-password">
+        <button class="btn big" id="btn-login">Anmelden</button>
+        <p class="link-row">Noch kein Konto? <a id="show-register">Jetzt registrieren</a></p>
+      </div>
+
+      <div id="register-form" style="display:none;">
+        <h2>Konto erstellen</h2>
+        <input type="text" id="reg-name" placeholder="Dein Name (z. B. Frau Förster)" autocomplete="name">
+        <input type="email" id="reg-email" placeholder="E-Mail-Adresse" autocomplete="email">
+        <input type="password" id="reg-password" placeholder="Passwort (mind. 8 Zeichen)" autocomplete="new-password">
+        <button class="btn big" id="btn-register">Registrieren</button>
+        <p class="link-row">Schon ein Konto? <a id="show-login">Zur Anmeldung</a></p>
+      </div>
+
+      <p class="link-row"><a href="/">← Zurück zur Schüler-Seite</a></p>
+    </div>
+  </section>
+
+  <!-- Dashboard: Quiz-Liste -->
+  <section id="screen-dashboard" class="screen">
+    <div class="topbar">
+      <div class="brand"><a href="/teacher.html">Zackboing</a></div>
+      <div class="user-info">
+        <span id="user-name"></span>
+        <a class="btn pink small" id="link-admin" href="/admin.html" style="display:none;">⚙️ Admin</a>
+        <button class="btn ghost small" id="btn-logout">Abmelden</button>
+      </div>
+    </div>
+    <div class="content">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tab-mine">📝 Meine Quizze</button>
+          <button class="tab-btn" id="tab-library">📚 Bibliothek</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <button class="btn ghost small" id="btn-import" title="Quiz aus JSON-Datei importieren">📥 Importieren</button>
+          <button class="btn ghost small" id="btn-export-all" title="Alle eigenen Quizze als Sicherung herunterladen">📦 Alle exportieren</button>
+          <button class="btn" id="btn-new-mental">🧮 Neue Kopfrechenrunde</button>
+          <button class="btn pink" id="btn-new-quiz">+ Neues Quiz</button>
+        </div>
+      </div>
+      <div class="import-bar">
+        <span class="muted-note">
+          Neue Quizze per Chatbot erstellen: <a href="/import-format.md" target="_blank">📄 Importformat</a> als Anleitung mitgeben
+          (<a id="copy-format" href="#">in Zwischenablage kopieren</a>), das JSON als Datei speichern und hier importieren.
+        </span>
+      </div>
+      <div class="import-result" id="import-result" style="display:none;"></div>
+
+      <!-- Eigene Quizze -->
+      <div id="panel-mine">
+        <div class="quiz-list" id="quiz-list"></div>
+        <div class="empty-state" id="empty-state" style="display:none;">
+          <span class="big-emoji">📝</span>
+          Noch keine Quizze. Erstelle dein erstes Quiz und bring die Klasse zum Jubeln!
+        </div>
+      </div>
+
+      <!-- Bibliothek: freigegebene Quizze aller Lehrkräfte -->
+      <div id="panel-library" style="display:none;">
+        <div class="lib-filter">
+          <select id="lib-subject">
+            <option value="">Alle Fächer</option>
+          </select>
+          <input type="text" id="lib-search" placeholder="Titel durchsuchen …">
+        </div>
+        <div id="library-list"></div>
+        <div class="empty-state" id="library-empty" style="display:none;">
+          <span class="big-emoji">📚</span>
+          Keine freigegebenen Quizze gefunden. Gib eigene Quizze frei, um die Bibliothek zu füllen!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quiz-Editor -->
+  <section id="screen-editor" class="screen">
+    <div class="topbar">
+      <div class="brand"><a href="/teacher.html">Zackboing</a></div>
+      <button class="btn ghost small" id="btn-back-dashboard">← Zurück ohne Speichern</button>
+    </div>
+    <div class="content">
+      <div class="error-msg" id="editor-error"></div>
+      <div class="editor-card">
+        <label for="quiz-title">Quiz-Titel</label>
+        <input type="text" id="quiz-title" placeholder="z. B. Bruchrechnung Klasse 6" maxlength="80">
+        <div class="q-settings">
+          <div>
+            <label for="quiz-subject">Fach</label>
+            <select id="quiz-subject"><option value="">– kein Fach –</option></select>
+          </div>
+          <div style="display:flex; align-items:flex-end; padding-bottom:12px;">
+            <label class="inline-check">
+              <input type="checkbox" id="quiz-shared">
+              📚 Für andere Lehrkräfte freigeben
+            </label>
+          </div>
+        </div>
+        <p class="muted-note">Tipp: Bei jeder Frage zählt neben „richtig“ auch die Geschwindigkeit – schnelle Antworten geben mehr Punkte! Freigegebene Quizze erscheinen für alle Lehrkräfte in der Bibliothek.</p>
+      </div>
+      <div id="question-list"></div>
+      <div class="editor-card" id="type-picker-card" style="display:none;">
+        <label>Welche Art von Frage soll es werden?</label>
+        <div class="type-picker" id="type-picker"></div>
+      </div>
+      <div class="editor-footer">
+        <button class="btn ghost" id="btn-add-question">+ Frage hinzufügen</button>
+        <button class="btn green" id="btn-save-quiz">💾 Quiz speichern</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Kopfrechenrunde: Einstellungen statt Fragen -->
+  <section id="screen-mental-editor" class="screen">
+    <div class="topbar">
+      <div class="brand"><a href="/teacher.html">Zackboing</a></div>
+      <button class="btn ghost small" id="btn-mental-back">← Zurück ohne Speichern</button>
+    </div>
+    <div class="content">
+      <div class="error-msg" id="mental-error"></div>
+      <div class="editor-card">
+        <h2 style="margin-bottom:12px;">🧮 Kopfrechenrunde</h2>
+        <label for="mental-title">Titel</label>
+        <input type="text" id="mental-title" maxlength="80" placeholder="z. B. Kopfrechnen bis 20 (leer lassen = automatisch)">
+        <div class="q-settings">
+          <div>
+            <label for="mental-subject">Fach</label>
+            <select id="mental-subject"><option value="">– kein Fach –</option></select>
+          </div>
+          <div style="display:flex; align-items:flex-end; padding-bottom:12px;">
+            <label class="inline-check">
+              <input type="checkbox" id="mental-shared">
+              📚 Für andere Lehrkräfte freigeben
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-card">
+        <label for="mental-count">Anzahl Aufgaben</label>
+        <div class="count-slider">
+          <input type="range" id="mental-count" min="3" max="50" step="1" value="10">
+          <span class="count-value" id="mental-count-value">10</span>
+        </div>
+        <p class="muted-note">Lässt sich vor jeder Runde in der Lobby noch anpassen.</p>
+
+        <label style="margin-top:18px;">Zahlenraum</label>
+        <div class="chip-toggles" id="mental-range">
+          <button type="button" class="chip-toggle" data-value="10">bis 10</button>
+          <button type="button" class="chip-toggle" data-value="20">bis 20</button>
+          <button type="button" class="chip-toggle" data-value="100">bis 100</button>
+          <button type="button" class="chip-toggle" data-value="1000">bis 1000</button>
+        </div>
+
+        <label style="margin-top:18px;">Rechenarten <span style="font-weight:600;">(mehrere möglich)</span></label>
+        <div class="chip-toggles" id="mental-ops">
+          <button type="button" class="chip-toggle" data-value="add"><b>+</b> Plus</button>
+          <button type="button" class="chip-toggle" data-value="sub"><b>−</b> Minus</button>
+          <button type="button" class="chip-toggle" data-value="mul"><b>·</b> Mal</button>
+          <button type="button" class="chip-toggle" data-value="div"><b>:</b> Geteilt</button>
+        </div>
+
+        <div class="q-settings" style="margin-top:18px;">
+          <div>
+            <label for="mental-time">Zeit pro Aufgabe</label>
+            <select id="mental-time">
+              <option value="5">5 Sekunden</option>
+              <option value="10">10 Sekunden</option>
+              <option value="20">20 Sekunden</option>
+              <option value="30">30 Sekunden</option>
+              <option value="60">60 Sekunden</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <label style="margin:0;">So könnten die Aufgaben aussehen</label>
+          <button type="button" class="btn small" id="mental-reroll">🎲 Neue Beispiele</button>
+        </div>
+        <div class="mental-examples" id="mental-examples"></div>
+        <p class="muted-note">Die Aufgaben werden bei jedem Spielstart neu gewürfelt. Minus-Ergebnisse sind nie negativ, Geteilt-Aufgaben gehen immer ohne Rest auf.</p>
+      </div>
+
+      <div class="editor-footer">
+        <span></span>
+        <button class="btn green" id="btn-save-mental">💾 Kopfrechenrunde speichern</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Medien-Auswahl: Upload oder Bildarchiv -->
+  <div class="overlay" id="media-overlay" style="display:none;">
+    <div class="overlay-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <h3 id="media-title">Medien auswählen</h3>
+        <button class="btn small danger" id="media-close">✕</button>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+        <button class="btn small green" id="media-upload-btn">📁 Datei hochladen</button>
+        <span class="muted-note" id="media-upload-hint"></span>
+      </div>
+      <div class="gallery-search">
+        <input type="text" id="gallery-q" placeholder="Bildarchiv durchsuchen (z. B. hund, wetter, sport) …">
+        <button class="btn small" id="gallery-go">🔍</button>
+      </div>
+      <div class="gallery-grid" id="gallery-grid"></div>
+      <div class="gallery-foot">
+        <span class="gallery-status" id="gallery-status"></span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn small" id="gallery-prev">← Zurück</button>
+          <button class="btn small" id="gallery-next">Weiter →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="file-input" style="display:none;">
+  <input type="file" id="import-input" accept=".json,application/json" multiple style="display:none;">
+
+  <script src="/js/sounds.js"></script>
+  <script src="/js/teacher.js"></script>
+</body>
+</html>

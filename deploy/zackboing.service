@@ -1,0 +1,25 @@
+[Unit]
+Description=Zackboing – Live-Quiz für die Schule
+After=network.target
+
+[Service]
+Type=simple
+User=zackboing
+Group=zackboing
+WorkingDirectory=/opt/zackboing
+Environment=NODE_ENV=production
+Environment=PORT=3100
+Environment=ZACKBOING_DATA=/var/lib/zackboing
+ExecStart=__NODE__ server/index.js
+Restart=always
+RestartSec=3
+
+# Härtung: nur das Datenverzeichnis ist beschreibbar
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/zackboing
+
+[Install]
+WantedBy=multi-user.target
