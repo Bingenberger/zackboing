@@ -32,6 +32,8 @@ function userForToken(token) {
     SELECT u.id, u.email, u.name, u.role FROM sessions s
     JOIN users u ON u.id = s.user_id
     WHERE s.token = ?
+      AND julianday(s.created_at) > julianday('now', '-90 days')
+      AND julianday(s.created_at) <= julianday('now')
   `).get(token) || null;
 }
 
