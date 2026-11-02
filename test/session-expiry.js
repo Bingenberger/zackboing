@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 process.env.ZACKBOING_DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'zackboing-session-test-'));
 const db = require('../server/db');
+db.migrate();
 const auth = require('../server/auth');
 try {
   const id = db.prepare('INSERT INTO users(email,name,pass_hash) VALUES(?,?,?)')

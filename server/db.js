@@ -1,16 +1,25 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+process.umask(0o077);
 
 // Über ZACKBOING_DATA lässt sich ein anderes Datenverzeichnis wählen (z. B. für Tests)
 const DATA_DIR = process.env.ZACKBOING_DATA || path.join(__dirname, '..', 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+fs.mkdirSync(UPLOAD_DIR, { recursive: true, mode: 0o700 });
 
 const db = new Database(path.join(DATA_DIR, 'zackboing.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+function migrate() {
+  return db.transaction(() => {
+    const version = db.pragma("user_version", { simple: true });
+    if (version > 1) throw new Error("Database schema is newer than this release.");
+    fs.chmodSync(DATA_DIR, 0o700);
+    fs.chmodSync(UPLOAD_DIR, 0o700);
+    fs.chmodSync(path.join(DATA_DIR, 'zackboing.db'), 0o600);
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,8 +83,13 @@ if (!db.prepare("PRAGMA table_info(quizzes)").all().some((c) => c.name === 'mode
   db.exec('ALTER TABLE quizzes ADD COLUMN mental TEXT');
 }
 
+
+    db.pragma("user_version = 1");
+  }).immediate();
+}
+
 const SETTING_DEFAULTS = {
-  registration_open: '1',
+  registration_open: '0',
   gallery_url: 'https://pix.foerster.rocks',
   subjects: [
     'Deutsch', 'Mathematik', 'Englisch', 'Französisch', 'Spanisch', 'Latein',
@@ -97,7 +111,7 @@ function setSetting(key, value) {
 
 function allSettings() {
   const out = { ...SETTING_DEFAULTS };
-  for (const row of db.prepare('SELECT key, value FROM settings').all()) out[row.key] = row.value;
+  for (const row of db.prepare('SELECT key, value FROM settings').all()) if (Object.hasOwn(SETTING_DEFAULTS, row.key)) out[row.key] = row.value;
   return out;
 }
 
@@ -106,3 +120,5 @@ module.exports.UPLOAD_DIR = UPLOAD_DIR;
 module.exports.getSetting = getSetting;
 module.exports.setSetting = setSetting;
 module.exports.allSettings = allSettings;
+
+module.exports.migrate = migrate;

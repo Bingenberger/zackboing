@@ -27,7 +27,7 @@ function destroySession(token) {
 }
 
 function userForToken(token) {
-  if (!token) return null;
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) return null;
   return db.prepare(`
     SELECT u.id, u.email, u.name, u.role FROM sessions s
     JOIN users u ON u.id = s.user_id
@@ -38,12 +38,12 @@ function userForToken(token) {
 }
 
 function parseCookies(header) {
-  const out = {};
+  const out = Object.create(null);
   if (!header) return out;
   for (const part of header.split(';')) {
     const idx = part.indexOf('=');
     if (idx === -1) continue;
-    out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+    try { out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim()); } catch { /* malformed cookie is not a session */ }
   }
   return out;
 }

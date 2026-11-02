@@ -445,3 +445,5 @@ module.exports = {
   addPlayer, shuffleAvatar, resumePlayer, nameTaken, currentQuestion, shuffledIndices,
   registerAnswer, everyoneDone, finishQuestion, podium, leaderboard, destroyGame,
 };
+
+module.exports.activeGameCount = () => [...games.values()].filter(game => game.state !== 'podium').length;

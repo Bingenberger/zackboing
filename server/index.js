@@ -12,21 +12,59 @@ const engine = require('./game');
 const quizformat = require('./quizformat');
 const mental = require('./mental');
 
+const config = require('./config');
+const bootstrap = require('./bootstrap');
 const PORT = process.env.PORT || 3000;
 
 const app = express();
+app.use((req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); next(); });
 // Hinter einem lokalen Reverse-Proxy (nginx/Caddy auf demselben Rechner) stimmen so
 // req.protocol und req.get('host') – wichtig für die QR-Code-URL. Im Schul-WLAN ohne Proxy
 // ändert sich nichts.
-app.set('trust proxy', 'loopback');
+app.set('trust proxy', config.proxyAddresses || 'loopback');
 const server = http.createServer(app);
 const io = new Server(server, {
   maxHttpBufferSize: 1e6,
+  allowRequest: (request, callback) => {
+    let ready = false;
+    try { ready = db.pragma("user_version", { simple: true }) === 1; } catch { /* unavailable */ }
+    callback(null, ready && config.originAllowed(request));
+  },
   // Abbrüche im Schul-WLAN schnell erkennen, damit der Client zügig neu verbindet
   pingInterval: 10000,
   pingTimeout: 15000,
 });
 
+let draining = false;
+function localControl(req, res, next) {
+  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)) {
+    return res.status(403).json({ error: 'Local management only.' });
+  }
+  next();
+}
+app.post('/_platform/prepare-stop', localControl, (req, res) => {
+  draining = true;
+  res.json({ draining, activeGames: engine.activeGameCount() });
+});
+app.post('/_platform/cancel-stop', localControl, (req, res) => {
+  draining = false;
+  res.json({ draining });
+});
+
+app.get('/health/live', (req, res) => res.json({ status: 'alive' }));
+app.get('/health/ready', (req, res) => {
+  try {
+    if (db.pragma('user_version', { simple: true }) !== 1) throw new Error('migration required');
+    db.prepare('SELECT id FROM users LIMIT 1').get();
+    res.json({ status: 'ready' });
+  } catch { res.status(503).json({ status: 'not-ready' }); }
+});
+app.use('/api', (req, res, next) => {
+  if (db.pragma('user_version', { simple: true }) !== 1) {
+    return res.status(503).json({ error: 'Eine explizite Datenbankmigration ist erforderlich.' });
+  }
+  next();
+});
 app.use(express.json({ limit: '2mb' }));
 app.use(auth.attachUser);
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -35,24 +73,12 @@ app.use('/media', express.static(db.UPLOAD_DIR, { maxAge: '30d', immutable: true
 // ---------------------------------------------------------------- Konten
 
 app.post('/api/register', (req, res) => {
-  const { email, name, password } = req.body || {};
-  const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
-  if (userCount > 0 && db.getSetting('registration_open') !== '1') {
-    return res.status(403).json({ error: 'Die Registrierung ist deaktiviert. Bitte wende dich an die Administration.' });
-  }
-  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' });
-  if (!name || !name.trim()) return res.status(400).json({ error: 'Bitte einen Namen angeben.' });
-  if (!password || password.length < 8) return res.status(400).json({ error: 'Das Passwort braucht mindestens 8 Zeichen.' });
-
   try {
-    // Das allererste Konto wird automatisch Admin.
-    const role = userCount === 0 ? 'admin' : 'teacher';
-    const info = db.prepare('INSERT INTO users (email, name, pass_hash, role) VALUES (?, ?, ?, ?)')
-      .run(email.trim(), name.trim(), auth.hashPassword(password), role);
-    const token = auth.createSession(info.lastInsertRowid);
-    setSessionCookie(res, token);
-    res.json({ user: { id: info.lastInsertRowid, email: email.trim(), name: name.trim(), role } });
+    const result = bootstrap.register(req.body);
+    setSessionCookie(res, result.token);
+    res.json({ user: result.user });
   } catch (err) {
+    if (err instanceof bootstrap.RegistrationError) return res.status(err.status).json({ error: err.message });
     if (String(err).includes('UNIQUE')) return res.status(409).json({ error: 'Diese E-Mail-Adresse ist bereits registriert.' });
     throw err;
   }
@@ -80,7 +106,7 @@ app.get('/api/me', (req, res) => {
 });
 
 function setSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', `zackboing_session=${token}; Path=/; Max-Age=${60 * 60 * 24 * 90}; HttpOnly; SameSite=Lax`);
+  res.setHeader('Set-Cookie', `zackboing_session=${token}; Path=/; Max-Age=${60 * 60 * 24 * 90}; HttpOnly; SameSite=Lax${config.publicOrigin.startsWith('https:') ? '; Secure' : ''}`);
 }
 
 // ---------------------------------------------------------------- Medien
@@ -564,7 +590,7 @@ app.put('/api/admin/settings', auth.requireAdmin, (req, res) => {
 // QR-Code für den Spielbeitritt (PNG). Nutzt die Adresse, über die der Host
 // die Seite aufgerufen hat – so funktioniert es auch im Schul-WLAN per IP.
 app.get('/qr/:pin.png', async (req, res) => {
-  const url = `${req.protocol}://${req.get('host')}/?pin=${encodeURIComponent(req.params.pin)}`;
+  const url = config.joinUrl(req, req.params.pin);
   const png = await QRCode.toBuffer(url, { width: 480, margin: 1 });
   res.type('png').send(png);
 });
@@ -762,10 +788,12 @@ function hostGameInfo(game) {
 
 io.on('connection', (socket) => {
   const cookies = auth.parseCookies(socket.handshake.headers.cookie);
-  const user = auth.userForToken(cookies.zackboing_session);
+  const sessionToken = cookies.zackboing_session;
 
   // --- Lehrkraft eröffnet ein Spiel
   socket.on('host:create', ({ quizId }, cb = () => {}) => {
+    if (draining) return cb({ error: 'Die App wird gewartet; neue Spiele sind vorübergehend gesperrt.' });
+    const user = auth.userForToken(sessionToken);
     if (!user) return cb({ error: 'Nicht angemeldet.' });
     // Eigene Quizze immer, fremde nur wenn freigegeben
     const row = db.prepare('SELECT * FROM quizzes WHERE id = ? AND (user_id = ? OR shared = 1)').get(quizId, user.id);
@@ -1009,7 +1037,7 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
   console.log(`Zackboing läuft auf http://localhost:${PORT}`);
   console.log('Im Schul-WLAN: die IP-Adresse dieses Rechners + Port verwenden.');
 });

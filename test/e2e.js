@@ -1,14 +1,21 @@
 /* End-to-End-Test: Admin, Medien, alle Fragetypen, komplettes Spiel.
- * Voraussetzung: Server frisch gestartet mit LEERER Datenbank (data/ löschen),
- * denn das erste registrierte Konto muss Admin werden.
+ * Nur isolierte synthetische Instanzen: explizite Migration und Bootstrapcode-Datei.
+ * Keine produktiven Datenbanken oder Domains verwenden.
  */
 const { io } = require('socket.io-client');
 
+const fs = require('node:fs');
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
+const target = new URL(BASE);
+if (!['app','zackboing','localhost','127.0.0.1'].includes(target.hostname) && !target.hostname.endsWith('.localhost')) {
+  throw new Error('End-to-End tests require an isolated local hostname.');
+}
+const BOOTSTRAP = process.env.ZACKBOING_TEST_BOOTSTRAP_FILE ? fs.readFileSync(process.env.ZACKBOING_TEST_BOOTSTRAP_FILE, 'utf8').trim() : '';
 let failures = 0;
 
 function check(label, cond, extra = '') {
-  console.log(`${cond ? '✅' : '❌'} ${label}${extra ? ` (${extra})` : ''}`);
+  const safe = String(extra).replace(/("(?:token|hostToken|sessionToken|bootstrapToken|pin)"[ ]*:[ ]*")[^"]+/gi, "$1<redacted>");
+  console.log(`${cond ? '✅' : '❌'} ${label}${safe ? ` (${safe})` : ''}`);
   if (!cond) failures++;
 }
 
@@ -41,27 +48,28 @@ async function jsonReq(path, { method = 'GET', body, cookie, raw } = {}) {
 }
 
 async function main() {
+  if (!BOOTSTRAP) throw new Error('ZACKBOING_TEST_BOOTSTRAP_FILE is required for this fresh synthetic database.');
   // ---------- Konten & Admin ----------
-  let r = await jsonReq('/api/register', { method: 'POST', body: { email: 'admin@schule.de', name: 'Frau Admin', password: 'geheim123' } });
+  let r = await jsonReq('/api/register', { method: 'POST', body: { email: 'admin@example.invalid', name: 'Frau Admin', password: 'geheim123', bootstrapToken: BOOTSTRAP } });
   check('Erstes Konto registriert', r.res.ok);
   check('Erstes Konto ist automatisch Admin', r.data.user && r.data.user.role === 'admin');
   const adminCookie = (r.res.headers.get('set-cookie') || '').split(';')[0];
 
   r = await jsonReq('/api/admin/settings', { cookie: adminCookie });
-  check('Admin: Einstellungen abrufbar', r.res.ok && r.data.settings.registration_open === '1');
+  check('Admin: Einstellungen abrufbar', r.res.ok && r.data.settings.registration_open === '0');
   check('Admin: Galerie-URL voreingestellt', r.data.settings.gallery_url === 'https://pix.foerster.rocks');
 
   r = await jsonReq('/api/admin/settings', { method: 'PUT', cookie: adminCookie, body: { registration_open: '0' } });
   check('Admin: Registrierung deaktiviert', r.res.ok);
 
-  r = await jsonReq('/api/register', { method: 'POST', body: { email: 'fremd@schule.de', name: 'Fremd', password: 'geheim123' } });
+  r = await jsonReq('/api/register', { method: 'POST', body: { email: 'fremd@example.invalid', name: 'Fremd', password: 'geheim123' } });
   check('Registrierung bei geschlossener Anmeldung blockiert', r.res.status === 403);
 
-  r = await jsonReq('/api/admin/users', { method: 'POST', cookie: adminCookie, body: { email: 'lehrer@schule.de', name: 'Herr Lehrer', password: 'geheim123', role: 'teacher' } });
+  r = await jsonReq('/api/admin/users', { method: 'POST', cookie: adminCookie, body: { email: 'lehrer@example.invalid', name: 'Herr Lehrer', password: 'geheim123', role: 'teacher' } });
   check('Admin: Konto manuell angelegt', r.res.ok);
   const teacherId = r.data.id;
 
-  r = await jsonReq('/api/login', { method: 'POST', body: { email: 'lehrer@schule.de', password: 'geheim123' } });
+  r = await jsonReq('/api/login', { method: 'POST', body: { email: 'lehrer@example.invalid', password: 'geheim123' } });
   check('Manuell angelegtes Konto kann sich anmelden', r.res.ok && r.data.user.role === 'teacher');
   const teacherCookie = (r.res.headers.get('set-cookie') || '').split(';')[0];
 
@@ -70,7 +78,7 @@ async function main() {
 
   r = await jsonReq(`/api/admin/users/${teacherId}`, { method: 'PATCH', cookie: adminCookie, body: { password: 'neues-geheim99' } });
   check('Admin: Passwort zurückgesetzt', r.res.ok);
-  r = await jsonReq('/api/login', { method: 'POST', body: { email: 'lehrer@schule.de', password: 'neues-geheim99' } });
+  r = await jsonReq('/api/login', { method: 'POST', body: { email: 'lehrer@example.invalid', password: 'neues-geheim99' } });
   check('Login mit neuem Passwort klappt', r.res.ok);
   const teacherCookie2 = (r.res.headers.get('set-cookie') || '').split(';')[0];
 
@@ -229,7 +237,7 @@ async function main() {
   // ---------- Spiel ----------
   const host = io(BASE, { extraHeaders: { Cookie: adminCookie } });
   const created = await emitAck(host, 'host:create', { quizId });
-  check('Spiel eröffnet', !!created.pin, `PIN ${created.pin}`);
+  check('Spiel eröffnet', !!created.pin);
 
   const anna = io(BASE);
   const ben = io(BASE);
@@ -530,17 +538,25 @@ async function main() {
     kim.disconnect();
   }
 
-  // ---------- Bildarchiv (optional, braucht Internet) ----------
-  r = await jsonReq('/api/gallery?q=hund', { cookie: adminCookie });
-  if (r.res.ok && r.data.items.length) {
-    check('Bildarchiv-Suche liefert Treffer', true, `${r.data.items.length} Bilder`);
-    const imp = await jsonReq('/api/gallery/import', { method: 'POST', cookie: adminCookie, body: { file: r.data.items[0].file } });
-    check('Bildarchiv-Import speichert lokal', imp.res.ok && imp.data.url.startsWith('/media/'));
+  // ---------- Ausschließlich lokales synthetisches Bildarchiv ----------
+  if (process.env.ZACKBOING_TEST_GALLERY_URL) {
+    const fixture = new URL(process.env.ZACKBOING_TEST_GALLERY_URL);
+    if (!['fixture', 'localhost', '127.0.0.1'].includes(fixture.hostname)) {
+      throw new Error('Gallery tests require the local fixture.');
+    }
+    await jsonReq('/api/admin/settings', { method: 'PUT', cookie: adminCookie,
+      body: { gallery_url: fixture.origin } });
+    r = await jsonReq('/api/gallery?q=hund', { cookie: adminCookie });
+    check('Bildarchiv-Suche liefert lokale Fixture', r.res.ok && r.data.items.length > 0);
+    if (r.res.ok && r.data.items.length) {
+      const imp = await jsonReq('/api/gallery/import', { method: 'POST', cookie: adminCookie, body: { file: r.data.items[0].file } });
+      check('Bildarchiv-Import speichert lokale Fixture', imp.res.ok && imp.data.url.startsWith('/media/'));
+    }
   } else {
-    console.log(`⚠️ Bildarchiv nicht erreichbar – Test übersprungen (${r.data.error || r.res.status})`);
+    console.log('NICHT AUSGEFÜHRT: optionales Bildarchiv ohne lokale Fixture.');
   }
 
-  console.log(failures ? `\n${failures} Test(s) fehlgeschlagen.` : '\nAlle Tests bestanden. 🎉');
+  console.log(failures ? `\n${failures} Test(s) fehlgeschlagen.` : '\nAlle ausgeführten Tests bestanden. 🎉');
   process.exit(failures ? 1 : 0);
 }
 

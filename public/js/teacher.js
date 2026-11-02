@@ -73,7 +73,7 @@
     try {
       const data = await api('/api/register', {
         method: 'POST',
-        body: { name: $('reg-name').value, email: $('reg-email').value, password: $('reg-password').value },
+        body: { name: $('reg-name').value, email: $('reg-email').value, password: $('reg-password').value, bootstrapToken: $('reg-bootstrap').value },
       });
       enterDashboard(data.user);
     } catch (e) { flashError('auth-error', e.message); }
