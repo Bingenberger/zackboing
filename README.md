@@ -4,10 +4,51 @@ Ein Live-Quizspiel für die Schule im Stil von Kahoot: Lehrkräfte erstellen Qui
 Schüler treten mit ihren Geräten live gegeneinander an – mit Musik, Soundeffekten,
 Punkteserien, Bestenliste und Siegerehrung mit Konfetti.
 
-## Starten
+<!-- schulplattform:installation -->
+## Installation
+
+### Im Rahmen der Schulplattform
+
+Empfohlen für den Schulserver: Die [Schulplattform](https://github.com/Bingenberger/schulplattform) installiert diese App zusammen mit den
+anderen Schul-Apps auf einem leeren Ubuntu-24.04-Server, mit eigener Subdomain, TLS-Zertifikat, Mailversand,
+Sicherung und Dashboard. Sie verwendet das signierte Release-Image `ghcr.io/bingenberger/zackboing`
+und die unveränderte `docker-compose.yml` dieses Repositorys plus eine Override-Datei.
+
+1. In der Plattformkonfiguration (`./install.sh configure` bzw. `/etc/schulplattform/platform.toml`)
+   unter `[apps.zackboing]` `enabled = true` und den Hostnamen setzen, z. B. `quiz.ihre-schule.de`,
+   und beim DNS-Provider einen A-Eintrag auf den Server anlegen.
+2. `./install.sh apply …` installiert die App. Migration, Proxy, Zertifikat und Sicherung übernimmt die Plattform.
+3. `./install.sh app-setup zackboing` gibt einen einmaligen, kurzlebigen Code für die erste Lehrkraft-Registrierung aus (`node server/bootstrap.js`). Ohne ihn bleibt die Registrierung geschlossen.
+4. Daten vom bisherigen Server übernehmen: `./install.sh import zackboing …` nach dem
+   [Umzugs-Runbook](https://github.com/Bingenberger/schulplattform/blob/main/docs/betrieb/umzug.md).
+
+### Standalone mit Docker Compose
+
+Ohne Plattform, z. B. zum Ausprobieren oder für einen eigenen Server mit eigenem Proxy.
+Benötigt Docker Engine mit Compose v2 (amd64). Die App lauscht danach nur auf `http://127.0.0.1:3100`.
+
+```sh
+docker compose build
+docker compose run --rm --no-deps app node server/migrate.js
+docker compose up -d --no-build
+docker compose run --rm --no-deps app node server/bootstrap.js   # Einmalcode für die erste Lehrkraft
+```
+
+Für den Betrieb hinter einem eigenen Proxy `ZACKBOING_PUBLIC_URL` und `ZACKBOING_PROXY_IPS` setzen
+(siehe [PLATFORM.md](PLATFORM.md)).
+
+Statt selbst zu bauen, kann das veröffentlichte Image verwendet werden (dann `docker compose build` weglassen):
+
+```sh
+docker pull ghcr.io/bingenberger/zackboing:0.1.0 && docker tag ghcr.io/bingenberger/zackboing:0.1.0 zackboing:0.1.0-dev
+```
+<!-- /schulplattform:installation -->
+
+## Lokale Entwicklung (nativ)
 
 ```bash
 npm install
+node server/migrate.js      # Schema anlegen (nicht mehr automatisch beim Start)
 npm start
 ```
 
@@ -158,7 +199,11 @@ es wird keine Internetverbindung benötigt.
 - Der Spielablauf (Timing, Punkte) läuft komplett serverseitig – Schummeln über
   den Client ist nicht möglich; Spieler erhalten die Lösung nie vorab.
 
-## Installation auf einem Server
+## Installation auf einem Server (historischer nativer Weg)
+
+> Empfohlen sind die Plattform oder Docker Compose (siehe „Installation“). `deploy/` beschreibt den früheren
+> systemd-Betrieb; er führt die heute nötige explizite Migration (`node server/migrate.js`) und den
+> Einmalcode für die erste Registrierung (`node server/bootstrap.js`) nicht automatisch aus.
 
 Im Ordner `deploy/` liegen alles Nötige: systemd-Dienst, nginx-/Caddy-Beispiel und
 zwei Skripte. Der Server braucht nur Node.js ≥ 18, rsync und Build-Werkzeuge für
